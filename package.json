@@ -9,7 +9,7 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/RedCMD/TmLanguage-Syntax-Highlighter.git"
+		"url": "https://github.com/RedCMD/TreeViewMaxCallStackError.git"
 	},
 	"activationEvents": [
 		"*"
