@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 
 let totalNodeCount = 0;
-let treeView: vscode.TreeView<element>;
 
 type element = {
+	type: 'sibling' | 'nesting' | 'sib' | 'nest',
 	index: number,
 	depth: number,
 	count: number,
@@ -11,51 +11,104 @@ type element = {
 
 const TreeDataProvider: vscode.TreeDataProvider<element> = {
 	getChildren(element?: element): element[] {
-		if (!element) {
-			vscode.window.showInformationMessage(`Start: ${performance.now()}`);
-		}
-		
 		const elements: element[] = [];
 
 		if (!element) {
-			for (let index = 0; index < 125000; index++) {
+			elements.push(
+				{
+					type: 'sibling',
+					index: -1,
+					depth: -1,
+					count: 0,
+				}
+			);
+			elements.push(
+				{
+					type: 'nesting',
+					index: -1,
+					depth: -1,
+					count: 0,
+				}
+			);
+			return elements;
+		}
+
+		if (element.type == 'sibling') {
+			vscode.window.showInformationMessage(`Start Sibling: ${performance.now().toFixed(3)}ms`);
+			totalNodeCount = 0;
+			for (let index = 0; index < 130000; index++) {
 				totalNodeCount++;
 				elements.push(
 					{
+						type: 'sib',
 						index: index,
-						depth: 0,
+						depth: -1,
 						count: totalNodeCount,
 					}
 				);
 			}
+			return elements;
 		}
 
-		// const depth = element?.depth ?? 0;
-		// if (depth < 4000) {
-		// 	totalNodeCount++;
-		// 	elements.push(
-		// 		{
-		// 			index: 0,
-		// 			depth: depth + 1,
-		// 			count: totalNodeCount,
-		// 		}
-		// 	);
-		// }
+		if (element.type == 'nesting') {
+			vscode.window.showInformationMessage(`Start Nesting: ${performance.now().toFixed(3)}ms`);
+			totalNodeCount = 0;
+			elements.push(
+				{
+					type: 'nest',
+					index: 0,
+					depth: element.depth + 1,
+					count: totalNodeCount,
+				}
+			);
+			return elements;
+		}
 
-		return elements;
+		if (element.type == 'nest') {
+			if (element.depth < 4000) {
+				totalNodeCount++;
+				elements.push(
+					{
+						type: 'nest',
+						index: 0,
+						depth: element.depth + 1,
+						count: totalNodeCount,
+					}
+				);
+			}
+			return elements;
+		}
 	},
 	getTreeItem(element: element): vscode.TreeItem {
+		const type = element.type;
 		const index = element.index;
 		const depth = element.depth;
 		const count = element.count;
+
+		if (type == 'nesting' || type == 'sibling') {
+			const item = new vscode.TreeItem(
+				type,
+				vscode.TreeItemCollapsibleState.Collapsed,
+			);
+			return item;
+		}
+
+		if (type == 'sib') {
+			if (count == 124999) {
+				vscode.window.showInformationMessage(`End Sibling: ${performance.now().toFixed(3)}ms`);
+			}
+		}
+		if (type == 'nest') {
+			if (count == 3999) {
+				vscode.window.showInformationMessage(`End Nesting: ${performance.now().toFixed(3)}ms`);
+			}
+		}
+
 		const item = new vscode.TreeItem(
 			`${depth}_${index}`,
 			vscode.TreeItemCollapsibleState.Expanded,
 		);
-		item.id = count.toString();
-		if (count == 124999) {
-			vscode.window.showInformationMessage(`End: ${performance.now()}`);
-		}
+		item.id = `${depth}_${index}`;
 		return item;
 	},
 };
@@ -70,52 +123,10 @@ function initCallStackView(context: vscode.ExtensionContext): void {
 		manageCheckboxStateManually: false,
 		// dragAndDropController: undefined,
 	};
-	treeView = vscode.window.createTreeView('TreeView', options);
+	vscode.window.createTreeView('TreeView', options);
 }
 
-export async function activate(context: vscode.ExtensionContext) {
-	// vscode.window.showInformationMessage(JSON.stringify("TreeView Extension"));
-	// const start = performance.now();
-
+export function activate(context: vscode.ExtensionContext) {
 	initCallStackView(context);
-
-	// vscode.window.showInformationMessage(`TreeView Extension ${(performance.now() - start).toFixed(3)}ms`);
 }
 
-
-// This method is called when your extension is deactivated
-export function deactivate() {
-	// vscode.window.showInformationMessage(JSON.stringify("deactivate"));
-	// https://github.com/microsoft/vscode/issues/105484
-	// https://github.com/microsoft/vscode/issues/201664
-}
-
-
-export function sleep(miliseconds: number) {
-	return new Promise(resolve => setTimeout(resolve, miliseconds));
-}
-
-export function stringify(this: any, key: string, value: any) {
-	if (typeof value === 'function') {
-		return "<function>";
-	}
-	if (typeof value === 'symbol') {
-		return "<symbol>";
-	}
-	if (typeof value === 'undefined') {
-		return "<undefined>";
-	}
-	if (value == null) {
-		return null;
-	}
-	if (value instanceof Map) {
-		if (key == "_grammars") {
-			return Array.from(value.keys());
-		}
-		return Array.from(value.entries());
-	}
-	if (key.startsWith("HEAP")) {
-		return "<error>";
-	}
-	return value;
-}
